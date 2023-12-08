@@ -10,3 +10,5 @@ This is a set of Python scripts that allows the user to generate thermodynamic m
 - _tmap__acb.py_ : Thermodynamic map generation
 
 Running each of the tools without arguments provides a short description of their usage
+
+The Python code depends on numpy, scipy, astropy, and iminuit. XSPEC is also required to generate the templates.

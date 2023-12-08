@@ -1,4 +1,4 @@
-cimport numpy as np
+import numpy as np
 from astropy.io import fits
 import sys,getopt
 import iminuit
