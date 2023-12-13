@@ -2,7 +2,7 @@ import numpy as np
 from astropy.io import fits
 import sys,getopt
 import iminuit
-from scipy.interpolate import LinearNDInterpolator
+from scipy.interpolate import LinearNDInterpolator, interp1d
 from astropy.wcs import WCS
 
 def extract_skybkg(all_img, all_exp, cx, cy, rmax, pixsize, all_bkg=None):
@@ -147,7 +147,7 @@ def region(exposure, wcs_inp, pixsize, regfile):
     return expo
 
 
-def fit_values(all_img, all_exp, fint, cx, cy, ncount, pixsize, skybkg, all_bkg=None, method='cstat', countimage=None):
+def fit_values(all_img, all_exp, fint, cx, cy, ncount, pixsize, skybkg, all_bkg=None, method='cstat', fit_ab=False, countimage=None):
 
     nphot = 0
     rad_pix = 0.
@@ -197,75 +197,145 @@ def fit_values(all_img, all_exp, fint, cx, cy, ncount, pixsize, skybkg, all_bkg=
             profile[i] = np.sum(all_img[i][sel] / all_exp[i][sel]) / nv / pixsize ** 2 - bkgprof[i]
             eprof[i] = np.sqrt(np.sum(all_img[i][sel] / all_exp[i][sel] ** 2)) / nv / pixsize ** 2
 
-    def calc_chi2(kt, norm, ab):
+    if fit_ab:
 
-        model = np.empty(nimg)
+        if method=='chi2':
+            def fit_func(kt, norm, ab):
 
-        for i in range(nimg):
+                model = np.empty(nimg)
 
-            tinterp = fint[i](kt, ab)
+                for i in range(nimg):
 
-            normlin = 10 ** norm
+                    tinterp = fint[i](kt, ab)
 
-            if tinterp <= 0. or kt <= 0.:
+                    normlin = 10 ** norm
 
-                model[i] = skybkg[i]
+                    if tinterp <= 0. or kt <= 0.:
 
-            else:
+                        model[i] = skybkg[i]
 
-                model[i] = normlin * tinterp + skybkg[i]
+                    else:
 
-        chi2 = np.sum( (model - profile) ** 2 / eprof**2)
+                        model[i] = normlin * tinterp + skybkg[i]
 
-        return chi2
+                chi2 = np.sum( (model - profile) ** 2 / eprof**2)
 
-    def calc_cstat(kt, norm, ab):
+                return chi2
 
-        model = np.empty(nimg)
-        
-        for i in range(nimg):
-        
-            tinterp = fint[i](kt, ab)
+        else:
+            def fit_func(kt, norm, ab):
 
-            normlin = 10 ** norm
+                model = np.empty(nimg)
 
-            if tinterp <= 0. or kt<=0.:
-            
-                model[i] = skybkg[i] * area * effexp[i] + bkgcounts[i]
-                
-            else:
-            
-                model[i] = (normlin * tinterp + skybkg[i]) * area * effexp[i] + bkgcounts[i]
-                        
-        cstat = 0.
-        
-        for i in range(nimg):
-        
-            if counts[i]>0:
-            
-                cstat = cstat + 2. * (model[i] - counts[i] * np.log(model[i]) - counts[i] + counts[i] * np.log(counts[i])) # normalized C-statistic
-                
-            else:
-            
-                cstat = cstat + 2. * model[i] 
+                for i in range(nimg):
 
-        return cstat
+                    tinterp = fint[i](kt, ab)
+
+                    normlin = 10 ** norm
+
+                    if tinterp <= 0. or kt <= 0.:
+
+                        model[i] = skybkg[i] * area * effexp[i] + bkgcounts[i]
+
+                    else:
+
+                        model[i] = (normlin * tinterp + skybkg[i]) * area * effexp[i] + bkgcounts[i]
+
+                cstat = 0.
+
+                for i in range(nimg):
+
+                    if counts[i] > 0:
+
+                        cstat = cstat + 2. * (model[i] - counts[i] * np.log(model[i]) - counts[i] + counts[i] * np.log(
+                            counts[i]))  # normalized C-statistic
+
+                    else:
+
+                        cstat = cstat + 2. * model[i]
+
+                return cstat
+    else:
+        if method=='chi2':
+            def fit_func(kt, norm):
+
+                model = np.empty(nimg)
+
+                for i in range(nimg):
+
+                    tinterp = fint[i](kt)
+
+                    normlin = 10 ** norm
+
+                    if tinterp <= 0. or kt <= 0.:
+
+                        model[i] = skybkg[i]
+
+                    else:
+
+                        model[i] = normlin * tinterp + skybkg[i]
+
+                chi2 = np.sum((model - profile) ** 2 / eprof ** 2)
+
+                return chi2
+
+        else:
+
+            def fit_func(kt, norm):
+
+                model = np.empty(nimg)
+
+                for i in range(nimg):
+
+                    tinterp = fint[i](kt)
+
+                    normlin = 10 ** norm
+
+                    if tinterp <= 0. or kt <= 0.:
+
+                        model[i] = skybkg[i] * area * effexp[i] + bkgcounts[i]
+
+                    else:
+
+                        model[i] = (normlin * tinterp + skybkg[i]) * area * effexp[i] + bkgcounts[i]
+
+                cstat = 0.
+
+                for i in range(nimg):
+
+                    if counts[i] > 0:
+
+                        cstat = cstat + 2. * (model[i] - counts[i] * np.log(model[i]) - counts[i] + counts[i] * np.log(
+                            counts[i]))  # normalized C-statistic
+
+                    else:
+
+                        cstat = cstat + 2. * model[i]
+
+                return cstat
 
     cr0 = (counts[0] - bkgcounts[0] - skybkg[0] * area * effexp[0]) / area / effexp[0]
-    t0 = fint[0](3., 0.3)
+    if fit_ab:
+        t0 = fint[0](3., 0.3)
+    else:
+        t0 = fint[0](3.)
+
     if cr0>0:
         normguess = np.log10(cr0 / t0)
     else:
         normguess = -4
 
-    if method=='chi2':
-        minuit = iminuit.Minuit(calc_chi2, kt=3., norm=normguess, ab=0.3)
+    if fit_ab:
+        minuit = iminuit.Minuit(fit_func, kt=3., norm=normguess, ab=0.3)
+
+        minuit.limits = [(0.5, 10), (-6, 0), [0.01, 1.5]]
+
     else:
-        minuit = iminuit.Minuit(calc_cstat, kt=3., norm=normguess, ab=0.3)
+        minuit = iminuit.Minuit(fit_func, kt=3., norm=normguess)
+
+        minuit.limits = [(0.5, 15), (-6, 0)]
 
     minuit.errordef = 1
-
-    minuit.limits = [(0.5, 10), (-6, 0), [0.01, 1.5]]
 
     out = minuit.migrad()
 
@@ -277,10 +347,16 @@ def fit_values(all_img, all_exp, fint, cx, cy, ncount, pixsize, skybkg, all_bkg=
     
     enorm = out.errors['norm'] * norm * np.log(10)
 
-    ab = out.values['ab']
+    if fit_ab:
+        ab = out.values['ab']
 
-    eab = out.errors['ab']
-                
+        eab = out.errors['ab']
+
+    else:
+        ab = 0.3
+
+        eab = 0.3
+
     return kt, ekt, norm, enorm, ab, eab, rad_pix * pixsize
 
        
@@ -301,8 +377,9 @@ def main(argv):
     outfile = None
     template_file = None
     maskfile = None
+    mask = None
     ncount = 200
-    rmax = 3. # maximum radius in arcmin outside of which we compute the sky background
+    rmax = None # maximum radius in arcmin outside of which we compute the sky background
     tmin = None # temperatures below this value will be cut
     regfile = None
     fit_skybkg = True
@@ -384,7 +461,8 @@ def main(argv):
     if len(lexp)!=nimg:
         print('Error: the number of provided exposure maps is different from the number of input images')
         sys.exit(2)
-        
+
+    lbkg = None
     if bkglist is not None:
         fbkg = open(bkglist)
         lbkg = fbkg.readlines()
@@ -396,9 +474,16 @@ def main(argv):
         
     template = np.loadtxt(template_file)
 
-    if template.shape[1] != nimg + 2:
+    if template.shape[1] == nimg + 1:
+        fit_ab = False
+
+    elif template.shape[1] == nimg + 2:
+        fit_ab = True
+
+    else:
 
         print('Error: the number of provided energy band templates is different from the number of input images')
+        sys.exit(2)
 
     all_img, all_exp, all_bkg = [], [], []
     
@@ -505,11 +590,18 @@ def main(argv):
             skybkg[i] = float(lsb[i].split()[3])
                                         
     all_fint = []
-    for i in range(2,nimg+2):
-    
-        fint = LinearNDInterpolator(template[:,:2], template[:,i])
-        
-        all_fint.append(fint)
+
+    if fit_ab:
+        for i in range(2,nimg+2):
+
+            fint = LinearNDInterpolator(template[:,:2], template[:,i])
+
+            all_fint.append(fint)
+    else:
+        for i in range(1, nimg + 1):
+            fint = interp1d(template[:, 0], template[:, i], kind='cubic', fill_value='extrapolate')
+
+            all_fint.append(fint)
         
     if tmin is None:
     
@@ -522,10 +614,12 @@ def main(argv):
 
         mask = np.ones(shape)
 
-
     zer = np.where(all_exp[0]==0)
 
     mask[zer] = 0.
+
+    if rmax is None:
+        rmax = np.max(rads)
 
     for j in range(shape[0]):
         
@@ -576,29 +670,39 @@ def main(argv):
     hdul = fits.HDUList([fits.PrimaryHDU()])
 
     tmaphdu = fits.ImageHDU(tmap, name='KT', header=header)
-    etmaphdu = fits.ImageHDU(ektmap, name='ERR_KT', header=header)
-    normhdu = fits.ImageHDU(nmap, name='NORM', header=header)
-    enormhdu = fits.ImageHDU(enmap, name='ERR_NORM', header=header)
-    abhdu = fits.ImageHDU(abmap, name='ABUN', header=header)
-    eabhdu = fits.ImageHDU(eabmap, name='ERR_ABUN', header=header)
-    radhdu = fits.ImageHDU(radmap, name='RADIUS', header=header)
-    phdu = fits.ImageHDU(tmap*np.nan_to_num(np.sqrt(nmap)), name='PRESSURE', header=header)
-    ephdu = fits.ImageHDU(ektmap*np.nan_to_num(np.sqrt(nmap)), name='ERR_P', header=header)
-    Khdu = fits.ImageHDU(np.nan_to_num(tmap*np.power(nmap,-1./3.)), name='ENTROPY', header=header)
-    eKhdu = fits.ImageHDU(np.nan_to_num(ektmap*np.power(nmap,-1./3.)), name='ERR_K', header=header)
-
     hdul.append(tmaphdu)
+
+    etmaphdu = fits.ImageHDU(ektmap, name='ERR_KT', header=header)
     hdul.append(etmaphdu)
+
+    normhdu = fits.ImageHDU(nmap, name='NORM', header=header)
     hdul.append(normhdu)
+
+    enormhdu = fits.ImageHDU(enmap, name='ERR_NORM', header=header)
     hdul.append(enormhdu)
-    hdul.append(abhdu)
-    hdul.append(eabhdu)
+
+    if fit_ab:
+        abhdu = fits.ImageHDU(abmap, name='ABUN', header=header)
+        hdul.append(abhdu)
+
+        eabhdu = fits.ImageHDU(eabmap, name='ERR_ABUN', header=header)
+        hdul.append(eabhdu)
+
+    radhdu = fits.ImageHDU(radmap, name='RADIUS', header=header)
     hdul.append(radhdu)
+
+    phdu = fits.ImageHDU(tmap*np.nan_to_num(np.sqrt(nmap)), name='PRESSURE', header=header)
     hdul.append(phdu)
+
+    ephdu = fits.ImageHDU(ektmap*np.nan_to_num(np.sqrt(nmap)), name='ERR_P', header=header)
     hdul.append(ephdu)
+
+    Khdu = fits.ImageHDU(np.nan_to_num(tmap*np.power(nmap,-1./3.)), name='ENTROPY', header=header)
     hdul.append(Khdu)
+
+    eKhdu = fits.ImageHDU(np.nan_to_num(ektmap*np.power(nmap,-1./3.)), name='ERR_K', header=header)
     hdul.append(eKhdu)
-    
+
     hdul.writeto(outfile, overwrite=True)
 
 if __name__ == "__main__":
