@@ -638,7 +638,8 @@ def main(argv):
                                                           pixsize=pixsize,
                                                           skybkg=skybkg,
                                                           all_bkg=all_bkg,
-                                                          countimage=countimage)
+                                                          countimage=countimage,
+                                                          fit_ab=fit_ab)
 
                 tmap[j,i] = tkt
 
