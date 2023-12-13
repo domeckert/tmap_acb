@@ -5,9 +5,9 @@ This is a set of Python scripts that allows the user to generate thermodynamic m
 
 - _templates.py_ : Generate template count rates from the APEC model in a set of energy bands
 
-- _skybkg__spec.py_ : Compute template count rates from a sky background model
+- _skybkg_spec.py_ : Compute template count rates from a sky background model
 
-- _tmap__acb.py_ : Thermodynamic map generation
+- _tmap_acb_abund.py_ : Thermodynamic map generation
 
 Running each of the tools without arguments provides a short description of their usage
 
