@@ -333,7 +333,7 @@ def fit_values(all_img, all_exp, fint, cx, cy, ncount, pixsize, skybkg, all_bkg=
     else:
         minuit = iminuit.Minuit(fit_func, kt=3., norm=normguess)
 
-        minuit.limits = [(0.5, 15), (-6, 0)]
+        minuit.limits = [(0.5, 50), (-6, 0)]
 
     minuit.errordef = 1
 
