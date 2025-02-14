@@ -56,7 +56,7 @@ Parameter description:
 - -o _outfile_ : Name of output file containing the thermodynamic maps
 - --bkgmaps=_bkglist_ : (optional) File containing a list of non X-ray background maps. If this is not provided, the non X-ray background is neglected.
 - --mask=_mask.fits_ : (optional) Mask file containing the definition of the regions where the temperature map will be generated. This should be an image of the same dimension as the provided images containing 0 (neglect) and 1 (include). If not provided, the entire image is used (see also _rmax_)
-- --rmax=_3: : (optional) Maximum radius (in arcmin) out to which the temperature map will be calculated. Defaults to 3.
+- --rmax=_3_: : (optional) Maximum radius (in arcmin) out to which the temperature map will be calculated. Defaults to 3.
 - --ncount=_200_ : (optional) Target number of counts for the adaptive circular binning algorithm. If _countimage_ is provided, the image link provided with this argument is used for the definition of ACB regions. Otherwise, the first energy band from the list is used. Defaults to 200.
 - --countimage=_imagelink_ : (optional) Count map used for the definition of the ACB regions. If this is not provided, the first image in the list is used.
 - --tmin=_0.5_ : (optional) Minimum temperature value set for the fitting algorithm. Defaults to 0.5.
