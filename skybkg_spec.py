@@ -4,7 +4,7 @@ from astropy.io import fits
 import urllib.request, urllib.error, urllib.parse
 import numpy as np
 
-m1rsp = '/Users/deckert/Documents/Work/cluster_data/scripts/m1.rsp'
+m1rsp = 'm1.rsp'
 
 def main(argv):
     try:

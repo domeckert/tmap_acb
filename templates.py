@@ -75,7 +75,10 @@ def main(argv):
     nband = len(lowthresh)
 
     fout = open(outfile, 'w')
-    fout.write('# kt ab')
+    if withabund:
+        fout.write('# kt ab')
+    else:
+        fout.write('# kt')
     for band in range(nband):
         tst = str(lowthresh[band])+'_'+str(highthresh[band])
         fout.write(' %s' % (tst))
