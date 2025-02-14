@@ -1,0 +1,7 @@
+ESASDB /Users/deckert/xmmsas/esas_caldb
+lhb    1.22416e-06   4.1991e-08
+ght    0.205801   0.0106367
+ghn    8.44372e-07   9.93461e-08
+cxb    8.33445e-07   4.06678e-08
+NH     0.0113
+REDSHIFT      0.046
